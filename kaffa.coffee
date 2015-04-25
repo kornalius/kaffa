@@ -1,32 +1,67 @@
 _ = require('underscore-plus')
 { ArrayObserver, PathObserver, ObjectObserver } = require('observe-js')
 PropertyAccessors = require 'property-accessors'
+raf = require('raf')
 
-exposeDef: (proto, def) ->
-  PropertyAccessors.includeInto(proto)
+_observers = []
+
+raf _deliverChanges = ->
+  for o in _observers
+    o.deliver()
+  raf(_deliverChanges)
+
+exposeDef = (o, name, def) ->
+  PropertyAccessors.includeInto(o)
 
   e = _.clone(def)
-  proto._exposed = e
+  if !o._exposed?
+    o._exposed = {}
+  o._exposed[name] = e
 
   if e.fn?
-    proto[e.name] = e.fn
+    o::[name] = e.fn
     e._args = e.fn.arguments
   else
-    proto[e.name] = if e.value? then e.value else null
+    o::[name] = if e.value? then e.value else null
     if e.get? or e.set?
-      proto.accessor e.name,
+      o.accessor name,
         get: e.get if e.get?
         set: e.set if e.set?
 
-observers = []
+unexposeDef = (o, name) ->
+  if o._exposed?
+    e = o._exposed[name]
+
+    if e.fn?
+      delete o::[name]
+    else
+      delete o::[name]
+      # if e.get? or e.set?
+      #   o.accessor name,
+      #     get: e.get if e.get?
+      #     set: e.set if e.set?
+
+    delete o._exposed[name]
+
+    if _.keys(o._exposed).length == 0
+      delete o._exposed
+
 
 module.exports =
 
-  expose: (proto, def) ->
-    if _.isArray(def)
-      exposeDef(proto, d) for d in def
+  observers: _observers
+
+  expose: (o, name, def) ->
+    if _.isObject(name)
+      exposeDef(o, k, v) for k, v of name
     else
-      exposeDef(proto, def)
+      exposeDef(o, name, def)
+
+  unexpose: (o, name) ->
+    if _.isObject(name)
+      unexposeDef(o, k) for k of name
+    else
+      unexposeDef(o, name)
 
   observe: (obj, path) ->
     if path?
@@ -53,15 +88,17 @@ module.exports =
         for k, v of changed
           console.log "OBSERVE: #{k} = #{v} changed (#{getOldValueFn(k)})"
 
-    observers.push observer
+    _observers.push observer
 
     return observer
 
-  processObservers: ->
-    for o in observers
-      o.deliver()
-
-  closeObservers: ->
-    for o in observers
+  shutKaffa: ->
+    for o in _observers
       o.close()
 
+_.extend module.exports,
+  require('./base.coffee')
+  require('./bool.coffee')
+  require('./numeric.coffee')
+  require('./text.coffee')
+  require('./list.coffee')

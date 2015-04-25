@@ -11,11 +11,11 @@ logs
 coverage
 # Coverage directory used by tools like istanbul
 # Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
+dist
 .lock-wscript
 # Compiled binary addons (http://nodejs.org/api/addons.html)
 # node-waf configuration
 node_modules
 pids
 build/Release
-/dist
 # Logs
