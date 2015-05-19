@@ -1,17 +1,11 @@
 _ = require('underscore-plus')
 cson = require('cson-parser')
+{ Class } = require('./kaffa.coffee')
 
-o = (value) ->
-  new Base(value)
+Base = Class 'Base',
 
-module.exports =
-
-  o: o
-
-  Base: class Base
-    constructor: (@value = null) ->
-
-    @cast: (value) ->
+  static:
+    cast: (value) ->
       if _.isNumber(value)
         { n } = require('./numeric.coffee')
         n value
@@ -27,28 +21,38 @@ module.exports =
       else
         o value
 
-    toBool: ->
-      { b } = require('./bool.coffee')
-      b @value
+  constructor: (value = null) ->
+    @value = value
+    console.log "Base.constructor", @
 
-    toNumeric: ->
-      { n } = require('./numeric.coffee')
-      n @value
+  toBool: ->
+    { b } = require('./bool.coffee')
+    b @value
 
-    toList: ->
-      { l } = require('./list.coffee')
-      l @value
+  toNumeric: ->
+    { n } = require('./numeric.coffee')
+    n @value
 
-    toText: ->
-      { t } = require('./text.coffee')
-      t @value
+  toList: ->
+    { l } = require('./list.coffee')
+    l @value
 
-    parse: (value) ->
-      @value = cson.parse(value)
+  toText: ->
+    { t } = require('./text.coffee')
+    t @value
 
-    stringify: ->
-      @toString()
+  parse: (value) ->
+    @value = cson.parse(value)
 
-    toString: ->
-      cson.stringify(_.toString(@value))
+  stringify: ->
+    @toString()
 
+  toString: ->
+    cson.stringify(_.toString(@value))
+
+
+module.exports =
+
+  Base: Base
+
+  o: (value) -> new Base(value)

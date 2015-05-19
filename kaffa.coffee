@@ -1,73 +1,119 @@
 _ = require('underscore-plus')
 { ArrayObserver, PathObserver, ObjectObserver } = require('observe-js')
-PropertyAccessors = require 'property-accessors'
 raf = require('raf')
 
+_classes = []
 _observers = []
+_delivering = false
+
 
 raf _deliverChanges = ->
+  _delivering = true
   for o in _observers
     o.deliver()
+  _delivering = false
   raf(_deliverChanges)
 
-exposeDef = (o, name, def) ->
-  PropertyAccessors.includeInto(o)
 
-  e = _.clone(def)
-  if !o._exposed?
-    o._exposed = {}
-  o._exposed[name] = e
+_isEvent = (name) ->
+  name.startsWith('@')
 
-  if e.fn?
-    o::[name] = e.fn
-    e._args = e.fn.arguments
+
+_classify = (name) ->
+  _.capitalize(_.camelize(name))
+
+
+ctor = (name, fn) ->
+  if !name? or fn.name == name
+    return fn
+  try
+    func = Function('fn', 'return function ' + name + '() { return fn.apply(this, arguments); }')(fn)
+  catch err
+    try
+      func = Function('fn', 'return function ' + name + '_() { return fn.apply(this, arguments); }')(fn)
+    catch err
+      return fn
+  return func
+
+
+superWrapper = (fn, superFn) ->
+  () ->
+    r = null
+    tmp = @super
+    @super = if superFn? then superFn.bind(@) else null
+    r = fn.apply(@, arguments)
+    @super = tmp
+    # console.log "SUPER CALL", fn, "->", superFn
+    return r
+
+
+Class = (name, def) ->
+  parent = if def.extends? then def.extends else ->
+
+  if def.hasOwnProperty('constructor')
+    fn = def.constructor
+  else if parent?
+    fn = -> parent.apply(@, arguments)
   else
-    o::[name] = if e.value? then e.value else null
-    if e.get? or e.set?
-      o.accessor name,
-        get: e.get if e.get?
-        set: e.set if e.set?
+    fn = ->
 
-unexposeDef = (o, name) ->
-  if o._exposed?
-    e = o._exposed[name]
+  child = ctor(name, superWrapper(fn, parent))
 
-    if e.fn?
-      delete o::[name]
-    else
-      delete o::[name]
-      # if e.get? or e.set?
-      #   o.accessor name,
-      #     get: e.get if e.get?
-      #     set: e.set if e.set?
+  for k, v of parent
+    if parent.hasOwnProperty(k)
+      child[k] = v
 
-    delete o._exposed[name]
+  if def.static?
+    for k, v of def.static
+      child[k] = v
 
-    if _.keys(o._exposed).length == 0
-      delete o._exposed
+  child.prototype = Object.create(parent.prototype,
+    constructor:
+      value: child
+      enumerable: false
+      writable: true
+      configurable: true
+  )
+
+  child.prototype._superclass = parent.prototype
+
+  if def.with?
+    for m in def.with
+      for k, v of m.prototype
+        if !(k in ['extends', 'with', 'static', 'constructor'])
+          if def[k]?
+            def[k + '.' + _classify(m.name)] = v
+          else
+            def[k] = v
+      if m.prototype.load?
+        m.prototype.load.call(@, def, child.prototype)
+    child.prototype._mixins = _.clone(def.with)
+
+  for k, v of def
+    if !(k in ['extends', 'with', 'static', 'constructor'])
+      if !_isEvent(k) and _.isFunction(v) and _.isFunction(parent?.prototype[k])
+        child.prototype[k] = ctor(k, superWrapper(v, parent.prototype[k]))
+      else
+        child.prototype[k] = v
+
+  _classes.push(child)
+
+  return child
 
 
 module.exports =
 
+  Class: Class
+  ctor: ctor
   observers: _observers
+  classes: _classes
 
-  expose: (o, name, def) ->
-    if _.isObject(name)
-      exposeDef(o, k, v) for k, v of name
-    else
-      exposeDef(o, name, def)
-
-  unexpose: (o, name) ->
-    if _.isObject(name)
-      unexposeDef(o, k) for k of name
-    else
-      unexposeDef(o, name)
-
-  observe: (obj, path) ->
+  observe: (obj, path, fn) ->
     if path?
       observer = new PathObserver(obj, path)
       observer.open (newValue, oldValue) ->
         console.log "OBSERVE: #{path} changed from #{oldValue} to #{newValue}"
+        fn.call(obj, {observer: observer, path: path, newValue: newValue, oldValue: oldValue}) if fn?
 
     else if _.isArray(obj)
       observer = new ArrayObserver(obj)
@@ -77,6 +123,7 @@ module.exports =
             console.log "OBSERVE: #{cson.stringify(removed)} removed at #{splice.index}"
           else
             console.log "OBSERVE: #{cson.stringify(obj.slice(splice.index, splice.addedCount))} added at #{splice.index}"
+          fn.call(obj, {observer: observer, path: path, slices: splices}) if fn?
 
     else if _.isObject(obj) and _.keys(obj).length
       observer = new ObjectObserver(obj)
@@ -87,14 +134,17 @@ module.exports =
           console.log "OBSERVE: #{k} removed (#{getOldValueFn(k)})"
         for k, v of changed
           console.log "OBSERVE: #{k} = #{v} changed (#{getOldValueFn(k)})"
+        fn.call(obj, {observer: observer, path: path, added: added, removed: removed, changed: changed, getOldValueFn: getOldValueFn}) if fn?
 
     _observers.push observer
 
     return observer
 
+
   shutKaffa: ->
     for o in _observers
       o.close()
+
 
 _.extend module.exports,
   require('./base.coffee')
