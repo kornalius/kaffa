@@ -112,28 +112,28 @@ module.exports =
     if path?
       observer = new PathObserver(obj, path)
       observer.open (newValue, oldValue) ->
-        console.log "OBSERVE: #{path} changed from #{oldValue} to #{newValue}"
+        # console.log "OBSERVE: #{path} changed from #{oldValue} to #{newValue}"
         fn.call(obj, {observer: observer, path: path, newValue: newValue, oldValue: oldValue}) if fn?
 
     else if _.isArray(obj)
       observer = new ArrayObserver(obj)
       observer.open (splices) ->
         for splice in splices
-          if splice.removed?
-            console.log "OBSERVE: #{cson.stringify(removed)} removed at #{splice.index}"
-          else
-            console.log "OBSERVE: #{cson.stringify(obj.slice(splice.index, splice.addedCount))} added at #{splice.index}"
+          # if splice.removed?
+            # console.log "OBSERVE: #{cson.stringify(removed)} removed at #{splice.index}"
+          # else
+            # console.log "OBSERVE: #{cson.stringify(obj.slice(splice.index, splice.addedCount))} added at #{splice.index}"
           fn.call(obj, {observer: observer, path: path, slices: splices}) if fn?
 
     else if _.isObject(obj) and _.keys(obj).length
       observer = new ObjectObserver(obj)
       observer.open (added, removed, changed, getOldValueFn) ->
-        for k, v of added
-          console.log "OBSERVE: #{k} = #{v} added"
-        for k, v of removed
-          console.log "OBSERVE: #{k} removed (#{getOldValueFn(k)})"
-        for k, v of changed
-          console.log "OBSERVE: #{k} = #{v} changed (#{getOldValueFn(k)})"
+        # for k, v of added
+          # console.log "OBSERVE: #{k} = #{v} added"
+        # for k, v of removed
+          # console.log "OBSERVE: #{k} removed (#{getOldValueFn(k)})"
+        # for k, v of changed
+          # console.log "OBSERVE: #{k} = #{v} changed (#{getOldValueFn(k)})"
         fn.call(obj, {observer: observer, path: path, added: added, removed: removed, changed: changed, getOldValueFn: getOldValueFn}) if fn?
 
     _observers.push observer
