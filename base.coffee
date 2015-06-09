@@ -1,4 +1,6 @@
 _ = require('underscore-plus')
+_.extend(_, require('underscore-contrib'))
+_.is = require('is')
 cson = require('cson-parser')
 { Class } = require('./kaffa.coffee')
 

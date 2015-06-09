@@ -1,9 +1,12 @@
 _ = require('underscore-plus')
+_.extend(_, require('underscore-contrib'))
 _.extend(_, require('underscore.string').exports())
+_.is = require('is')
 { Class } = require('./kaffa.coffee')
 
 { o, Base } = require('./base.coffee')
 { n, Numeric } = require('./numeric.coffee')
+{ d, DateTime } = require('./datetime.coffee')
 { l, List } = require('./list.coffee')
 
 Text = Class 'Text',

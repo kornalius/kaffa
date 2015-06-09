@@ -149,6 +149,7 @@ module.exports =
 _.extend module.exports,
   require('./base.coffee')
   require('./bool.coffee')
+  require('./datetime.coffee')
   require('./numeric.coffee')
   require('./text.coffee')
   require('./list.coffee')

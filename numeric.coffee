@@ -1,4 +1,7 @@
 _ = require('underscore-plus')
+_.extend(_, require('underscore-contrib'))
+_.number = require('underscore.number')
+numeral = require('numeral')
 { o, Base } = require('./base.coffee')
 { Class } = require('./kaffa.coffee')
 

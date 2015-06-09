@@ -1,4 +1,6 @@
 _ = require('underscore-plus')
+_.extend(_, require('underscore-contrib'))
+_.array = require('underscore.array')
 { o, Base } = require('./base.coffee')
 { Class } = require('./kaffa.coffee')
 
